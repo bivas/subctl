@@ -40,47 +40,6 @@ func NewBrokerSA(submarinerBrokerSA string) *v1.ServiceAccount {
 	return sa
 }
 
-// Create a role for each Cluster SAs to bind to.
-func NewBrokerClusterRole() *rbacv1.Role {
-	return &rbacv1.Role{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: submarinerBrokerClusterRole,
-		},
-		Rules: []rbacv1.PolicyRule{
-			{
-				Verbs:     []string{"create", "get", "list", "watch", "patch", "update", "delete"},
-				APIGroups: []string{"submariner.io"},
-				Resources: []string{"clusters", "endpoints"},
-			},
-			{
-				Verbs:     []string{"get", "list"},
-				APIGroups: []string{"submariner.io"},
-				Resources: []string{"brokers"},
-			},
-			{
-				Verbs:     []string{"create", "get", "list", "watch", "patch", "update", "delete"},
-				APIGroups: []string{"multicluster.x-k8s.io"},
-				Resources: []string{"*"},
-			},
-			{
-				Verbs:     []string{"create", "get", "list", "watch", "patch", "update", "delete"},
-				APIGroups: []string{"discovery.k8s.io"},
-				Resources: []string{"endpointslices", "endpointslices/restricted"},
-			},
-			{
-				Verbs:     []string{"get", "list", "watch"},
-				APIGroups: []string{""},
-				Resources: []string{"secrets"},
-			},
-			{
-				Verbs:     []string{"get", "list"},
-				APIGroups: []string{""},
-				Resources: []string{"serviceaccounts"},
-			},
-		},
-	}
-}
-
 // Create a role for to bind the cluster admin (subctl) SA.
 func NewBrokerRoleBinding(serviceAccount, role, namespace string) *rbacv1.RoleBinding {
 	binding := &rbacv1.RoleBinding{
