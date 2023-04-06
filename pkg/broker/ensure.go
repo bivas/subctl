@@ -21,6 +21,10 @@ package broker
 import (
 	"context"
 	goerrors "errors"
+	"github.com/submariner-io/subctl/pkg/rolebinding"
+	"github.com/submariner-io/submariner-operator/pkg/embeddedyamls"
+	rbacv1 "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"time"
 
 	"github.com/pkg/errors"
@@ -35,9 +39,7 @@ import (
 	"github.com/submariner-io/submariner-operator/pkg/lighthouse"
 	"github.com/submariner-io/submariner-operator/pkg/names"
 	v1 "k8s.io/api/core/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 )
@@ -137,7 +139,7 @@ func CreateSAForCluster(ctx context.Context, kubeClient kubernetes.Interface, cl
 
 func createBrokerAdministratorRoleAndSA(ctx context.Context, kubeClient kubernetes.Interface, inNamespace string) error {
 	// Create the SA we need for the managing the broker (from subctl, etc..).
-	err := CreateNewBrokerSA(ctx, kubeClient, constants.SubmarinerBrokerAdminSA, inNamespace)
+	err := CreateNewBrokerAdminSA(ctx, kubeClient, inNamespace)
 	if err != nil && !apierrors.IsAlreadyExists(err) {
 		return errors.Wrap(err, "error creating the broker admin service account")
 	}
@@ -149,7 +151,7 @@ func createBrokerAdministratorRoleAndSA(ctx context.Context, kubeClient kubernet
 	}
 
 	// Create the role binding
-	_, err = CreateNewBrokerRoleBinding(ctx, kubeClient, constants.SubmarinerBrokerAdminSA, submarinerBrokerAdminRole, inNamespace)
+	_, err = CreateOrUpdateBrokerAdminRoleBinding(ctx, kubeClient, inNamespace)
 	if err != nil && !apierrors.IsAlreadyExists(err) {
 		return errors.Wrap(err, "error creating the broker rolebinding")
 	}
@@ -195,21 +197,35 @@ func CreateOrUpdateClusterBrokerRole(ctx context.Context, kubeClient kubernetes.
 
 //nolint:wrapcheck // No need to wrap here
 func CreateOrUpdateBrokerAdminRole(ctx context.Context, clientset kubernetes.Interface, inNamespace string) (created bool, err error) {
-	return role.Ensure(ctx, clientset, inNamespace, NewBrokerAdminRole())
+	return role.EnsureFromYAML(ctx, clientset, inNamespace, embeddedyamls.Config_rbac_broker_broker_admin_role_yaml)
 }
 
-//nolint:wrapcheck // No need to wrap here
-func CreateNewBrokerRoleBinding(ctx context.Context, kubeClient kubernetes.Interface, serviceAccount, roleName, inNamespace string) (
+func CreateNewBrokerRoleBinding(ctx context.Context, kubeClient kubernetes.Interface, serviceAccount, roleName,
+	inNamespace string) (
 	brokerRoleBinding *rbacv1.RoleBinding, err error,
 ) {
 	return kubeClient.RbacV1().RoleBindings(inNamespace).Create(
 		ctx, NewBrokerRoleBinding(serviceAccount, roleName, inNamespace), metav1.CreateOptions{})
 }
 
+
+//nolint:wrapcheck // No need to wrap here
+func CreateOrUpdateBrokerAdminRoleBinding(ctx context.Context, kubeClient kubernetes.Interface, inNamespace string) (
+	created bool, err error) {
+	return rolebinding.Ensure(ctx, kubeClient, inNamespace, embeddedyamls.Config_rbac_broker_broker_admin_role_binding_yaml)
+}
+
 //nolint:wrapcheck // No need to wrap here
 func CreateNewBrokerSA(ctx context.Context, kubeClient kubernetes.Interface, submarinerBrokerSA, inNamespace string) (err error) {
 	sa := NewBrokerSA(submarinerBrokerSA)
 	_, err = serviceaccount.Ensure(ctx, kubeClient, inNamespace, sa, true)
+
+	return err
+}
+
+//nolint:wrapcheck // No need to wrap here
+func CreateNewBrokerAdminSA(ctx context.Context, kubeClient kubernetes.Interface, inNamespace string) (err error) {
+	_, err = serviceaccount.EnsureFromYAML(ctx, kubeClient, inNamespace, embeddedyamls.Config_rbac_broker_broker_admin_service_account_yaml)
 
 	return err
 }

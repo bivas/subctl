@@ -20,7 +20,6 @@ package broker
 
 import (
 	"fmt"
-
 	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,7 +27,6 @@ import (
 
 const (
 	submarinerBrokerClusterRole      = "submariner-k8s-broker-cluster"
-	submarinerBrokerAdminRole        = "submariner-k8s-broker-admin"
 	submarinerBrokerClusterDefaultSA = "submariner-k8s-broker-client" // for backwards compatibility with documentation
 )
 
@@ -40,47 +38,6 @@ func NewBrokerSA(submarinerBrokerSA string) *v1.ServiceAccount {
 	}
 
 	return sa
-}
-
-// Create a role to bind to Broker SA.
-func NewBrokerAdminRole() *rbacv1.Role {
-	return &rbacv1.Role{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: submarinerBrokerAdminRole,
-		},
-		Rules: []rbacv1.PolicyRule{
-			{
-				Verbs:     []string{"create", "get", "list", "watch", "patch", "update", "delete"},
-				APIGroups: []string{"submariner.io"},
-				Resources: []string{"clusters", "endpoints"},
-			},
-			{
-				Verbs:     []string{"get", "list"},
-				APIGroups: []string{"submariner.io"},
-				Resources: []string{"brokers"},
-			},
-			{
-				Verbs:     []string{"create", "get", "list", "update", "delete", "watch"},
-				APIGroups: []string{""},
-				Resources: []string{"serviceaccounts", "secrets", "configmaps"},
-			},
-			{
-				Verbs:     []string{"create", "get", "list", "delete"},
-				APIGroups: []string{"rbac.authorization.k8s.io"},
-				Resources: []string{"rolebindings"},
-			},
-			{
-				Verbs:     []string{"create", "get", "list", "watch", "patch", "update", "delete"},
-				APIGroups: []string{"multicluster.x-k8s.io"},
-				Resources: []string{"*"},
-			},
-			{
-				Verbs:     []string{"create", "get", "list", "watch", "patch", "update", "delete"},
-				APIGroups: []string{"discovery.k8s.io"},
-				Resources: []string{"endpointslices", "endpointslices/restricted"},
-			},
-		},
-	}
 }
 
 // Create a role for each Cluster SAs to bind to.
